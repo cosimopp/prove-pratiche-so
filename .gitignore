@@ -1,9 +1,9 @@
-#ignore eveything except...
-*.*
-*
-!*.c
-!*.h
-!*.txt
-!*/*.c
-!*/*.h
-!*/*.txt
+#ignore eveything in all folders except (using regex)...
+**/*.*
+**/*
+!**/*.[h|c|txt]
+#!*.h
+#!*.txt
+#!*/*.c
+#!*/*.h
+#!*/*.txt
