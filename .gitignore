@@ -1,5 +1,6 @@
 #ignore eveything except...
-*/*
+*.*
+*
 !*.c
 !*.h
 !*.txt
