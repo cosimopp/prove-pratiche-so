@@ -1,0 +1,8 @@
+#ignore eveything except...
+*/*
+!*.c
+!*.h
+!*.txt
+!*/*.c
+!*/*.h
+!*/*.txt

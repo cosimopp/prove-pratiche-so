@@ -44,5 +44,4 @@ void main(int argc, char const *argv[])
 		return 1;
 	}
 	//https://www.youtube.com/watch?v=_kIa4D7kQ8I
-	//gitignore ricorsive subfolders per a.out
 }

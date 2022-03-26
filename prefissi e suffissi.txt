@@ -1,4 +1,4 @@
-per comprendere prefissi e suffissi printf https://youtu.be/VA22ESilQO0
+per comprendere prefissi e suffissi (printf https://youtu.be/VA22ESilQO0)
 		
 		char buf[100];
     	va_list args; //(variadic) needs initialization
@@ -14,7 +14,18 @@ per comprendere prefissi e suffissi printf https://youtu.be/VA22ESilQO0
     	
     	snprintf(buf, 3, "12345\n"); // => buf = 123, len(buf) = 100
     	
-    	vfprintf(stdout, "Example\n", args); //syscall gets a va_list as argument (var args list)
+    	vfprintf(stdout, "Example\n", args); //syscall gets a va_list or vector as a single argument
+    	execv(const char *pathname, char *const argv[]);
+
 		//wide-character
     	fwprintf_s(stdout, "Example\n"); //treats formatted string as being a wide char array => each char
 		//is more than just one byte
+
+		"p" usually stands for program file vs pathname 
+		execlp("ls", ...) vs execl("/bin/ls", ...) //relies on PATH
+
+		"l" usually stands for list
+
+		"e" usually stands for environment 
+
+		toDo: "u"
