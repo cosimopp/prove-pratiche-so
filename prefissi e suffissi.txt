@@ -1,0 +1,20 @@
+per comprendere prefissi e suffissi printf https://youtu.be/VA22ESilQO0
+		
+		char buf[100];
+    	va_list args; //(variadic) needs initialization
+		
+    	printf("Example\n");
+
+    	fprintf(stdout, "Example\n"); //dealing with stream e.g. file
+		//safer version
+    	fprintf_s(stdout, "Example\n"); //"instead of just calling the function, check if parameters are okay 
+    	//before doing the operation so it doesn't crash the application" (C11)
+    	
+    	sprintf(buf, "Example\n"); //sovrascrive
+    	
+    	snprintf(buf, 3, "12345\n"); // => buf = 123, len(buf) = 100
+    	
+    	vfprintf(stdout, "Example\n", args); //syscall gets a va_list as argument (var args list)
+		//wide-character
+    	fwprintf_s(stdout, "Example\n"); //treats formatted string as being a wide char array => each char
+		//is more than just one byte
