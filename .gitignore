@@ -1,9 +1,4 @@
 #ignore eveything in all folders except (using regex)...
 **/*.*
-**/*
 !**/*.[h|c|txt]
-#!*.h
-#!*.txt
-#!*/*.c
-#!*/*.h
-#!*/*.txt
+#https://git-scm.com/docs/gitignore
