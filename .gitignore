@@ -1,6 +1,7 @@
 #ignore eveything in all folders except (using regex)...
 */*.*
 */*
-!**/*.[h|c|py|txt]
+!**/*.[h|c|txt]
+!**/*.py
 !**/Makefile
 #https://git-scm.com/docs/gitignore
