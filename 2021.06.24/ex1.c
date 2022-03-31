@@ -10,10 +10,14 @@ viene cancellato (la directory D torna vuota).
 completare dircat. Se il file aggiunto a D è un eseguibile dircat deve inserire in F dopo la riga di testata
 l'output dell'esecuzione del nuovo file non già il suo contenuto. Completata l'esecuzione il file
 eseguibile deve venir cancellato come nell'esercizio 1.
+
+Commento di Matteo: riguardo l'ultima traccia, da terminale funziona, se fatto manualmente si sganghera tutto (ex non viene più mostrato
+output sulla console ma viene scritto sul log)
 */
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/inotify.h>
+#include <sys/stat.h>
 #include <unistd.h>
 #include "davolib.h"
 #include <errno.h>  
@@ -26,7 +30,15 @@ void main(int argc, char const *argv[])
 	}
 	/* Create the file descriptor for accessing the inotify API */
 	//inotify file handle should not block read operations. 
-	int fd = inotify_init1(IN_CLOEXEC); //creates an inotify instance and returns a file descriptor referring to the inotify instance (everything is a file)
+	/*
+	IN_CLOEXEC
+	close-on-exec flag for the file descriptor, which causes the file descriptor to be automatically (and atomically) closed when any of the exec-family functions succeed.
+	IN_NONBLOCK
+	le funzioni NON rimangono in attesa finché non vi sono dati da leggere disponibili sul descrittore
+	Altre flag e mask in man 2 open
+	http://www.ce.uniroma2.it/courses/iw08/lucidi/socket_4_2pp.pdf
+	*/
+	int fd = inotify_init1(IN_NONBLOCK); //creates an inotify instance and returns a file descriptor referring to the inotify instance (everything is a file)
 	FILE *logFile = fopen(argv[2], "a");
 	if (logFile == NULL){
 		perror("fopen");
@@ -80,7 +92,24 @@ void main(int argc, char const *argv[])
         	//https://stackoverflow.com/questions/13098620/using-stat-to-check-if-a-file-is-executable-in-c
         	//https://linux.die.net/man/2/stat
         	//http://manpages.ubuntu.com/manpages/trusty/man2/inotify_init.2.html
-        	appendFileToFile(newFilePath->data, argv[2]);
+        	struct stat sb;
+        	//no error && use S_IXUSR (S_IEXEC is an old synonym of S_IXUSR) to check if you have execute permission. Bitwise AND operator (&) checks whether the bits of S_IXUSR are set or not.
+        	if (stat(newFilePath->data, &sb) == 0 && sb.st_mode & S_IXUSR){
+        		/*executable*/
+        		char output[64]; init_array(output);
+
+        		const char *args[2] = {newFilePath->data, NULL};
+        		
+        		getOutput(args[0], args, output, sizeof(output));
+        		
+        		printf("%s\n", output);
+        		fputs(output, logFile);
+
+				fflush(logFile);
+
+        	}
+        	else { appendFileToFile(newFilePath->data, argv[2]); }
+
 
         	//remove: Resource temporarily unavailable => devo unlinkarlo prima
         	if (unlink(newFilePath->data)){
@@ -91,11 +120,7 @@ void main(int argc, char const *argv[])
         		perror("remove");
         		exit(EXIT_FAILURE);
         	}
-
-
       	}
-	
-
 	}
 
 }	

@@ -30,7 +30,7 @@
             free(fileContentBuf);
             */
 
-    const char *vector[3] = {"/bin/echo", "ciao", NULL};
+    const char *vector[2] = {"./interi", NULL};
     char output[60];
     init_array(output);
     getOutput(vector[0], vector, output, 60);

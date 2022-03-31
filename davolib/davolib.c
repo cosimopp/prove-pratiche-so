@@ -64,7 +64,7 @@ int getOutput(const char *filePath, char * const* argv, char *buf, int bufSize){
 		fread reads raw data -- it will stop after a specified (or default) number of bytes, independently of any newline that might or might not be present.
       	*/
       	/*clean up*/
-      	close(pipefd[READ]);
+      	//close(pipefd[READ]); secondo me se eseguiamo questa istruzione dà errore perchè aspetta di leggere altri caratteri poichè non ne ha letti 60 (up)
       	return 0;
     }
 }
@@ -206,7 +206,7 @@ void insert_substring_at(string_t *s, const char *toInsert, int startPos){}
 void remove_substring(string_t *s, const char *toRemove){}
 
 //returns occurrences number of a single char in a string
-int substring_occurrences(string_t *s, const char * sub){ //l'algoritmo ha costo O(n^2)(successione gaussiana) nel caso pessimo
+int substring_occurrences(string_t *s, const char * sub){ //l'algoritmo ha costo O(n^2)(sommatoria gaussiana) nel caso pessimo
 	//non eseguo direttamente questo algoritmo per splittare la stringa perchè non so quanti token dovrò inserire nell'array
 	char *str = s->data; //temp per comodità di lettura
 
