@@ -16,4 +16,18 @@
 
     writeFromFileToFile("./mondo.txt", "./ciao.txt");
 
+
+    /*
+            fileSize = getFileSize(newFilePath->data);
+            printf("%d", fileSize);
+            char *fileContentBuf = malloc(fileSize * (sizeof(char)) + 1);
+            fileContentBuf[fileSize] = '\0';
+            readWholeFile(newFilePath->data, fileContentBuf);
+
+            fwrite(fileContentBuf, sizeof(char), fileSize, logFile); //da buffer a stream
+
+            //libero le risorse e aspetto il prossimo evento
+            free(fileContentBuf);
+            */
+
  }

@@ -70,7 +70,10 @@ void main(int argc, char const *argv[])
 
         	//fflush(logFile);
 
-        	//creo la stringa per individuare il file creato
+        	printf("evento catturato");
+        	
+        	//ora dobbiamo leggere il contenuto del file appena creato nella cartella vuota
+        	//creo prima la stringa per individuare il file creato
         	update_string(newFilePath, argv[1]);
         	//append_string(newFilePath, "/");
         	append_string(newFilePath, event->name);
@@ -90,7 +93,8 @@ void main(int argc, char const *argv[])
 
         	writeFromFileToFile(newFilePath->data, argv[2]);
 
-      	}	
+      	}
+	
 
 	}
 

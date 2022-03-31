@@ -41,7 +41,7 @@ int getFileSize(const char *filePath){
 
 }
 
-int writeFromFileToFile(const char *srcPath, const char *dstPath){//append, non sovrascrive. from to
+int writeFromFileToFile(const char *srcPath, const char *dstPath){//append, non sovrascrive
 
 	FILE *src = fopen(srcPath, "r");
 	FILE *dst = fopen(dstPath, "a");
