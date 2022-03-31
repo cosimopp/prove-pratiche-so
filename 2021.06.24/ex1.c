@@ -15,6 +15,8 @@ eseguibile deve venir cancellato come nell'esercizio 1.
 #include <stdlib.h>
 #include <sys/inotify.h>
 #include <unistd.h>
+#include "davolib.h"
+#include <errno.h>  
 
 void main(int argc, char const *argv[])
 {
@@ -23,17 +25,26 @@ void main(int argc, char const *argv[])
 		exit(EXIT_FAILURE);
 	}
 	/* Create the file descriptor for accessing the inotify API */
-	int fd = inotify_init1(); //creates an inotify instance and returns a file descriptor referring to the inotify instance (everything is a file)
+	//inotify file handle should not block read operations. 
+	int fd = inotify_init1(IN_NONBLOCK); //creates an inotify instance and returns a file descriptor referring to the inotify instance (everything is a file)
 	FILE *logFile = fopen(argv[2], "a");
-	inotify_add_watch(fd, argv[1], IN_CREATE); //controllo solo una directory => non c'è necessità di una watchList.
+	if (logFile == NULL){
+		perror("fopen");
+		return;
+	}
+	if (!inotify_add_watch(fd, argv[1], IN_CREATE)){
+		perror("inotify_add_watch");
+		return;
+	} //controllo solo una directory => non c'è necessità di una watchList.
 	//inoltre questa libreria freedda tutte le risorse associate all'istanza non appena la chiudiamo con close(fd).
 	//La lista wd conterrebbe ID per identificare directory (tramite wd[i] == event->wd) quando si verifica un evento
-	//L'identificativo è un descrittore all'evento di ogni directory: wd[i] = inotify_add_watch(fd, argv[i], IN_OPEN | IN_CLOSE); if (wd[i] == event->wd); //è avvenuto per quella directory
+	//L'identificativo è un descrittore associato all'evento di ogni directory: wd[i] = inotify_add_watch(fd, argv[i], IN_OPEN | IN_CLOSE); if (wd[i] == event->wd); //è avvenuto per quella directory
 
 	//variabili usate per salvare e leggere l'evento (dovremo fare un casting per interpretare cosa abbiamo salvato)
-	char buf[4096];
+	char buf[4096]; init_array(buf);//memsettare array!
 	size_t len;
 	struct inotify_event *event;
+	string_t *newFilePath = create_string(""); //la creo qui così non devo freeddarla ma l'aggiorno di volta in volta. stringa vuota
 
 	while (1){
 		len = read(fd, buf, sizeof(buf));
@@ -49,10 +60,37 @@ void main(int argc, char const *argv[])
 
       		event = (const struct inotify_event *) ptr;
         	
-        	if(event->mask & IN_ISDIR || !event->len) continue;
-        	fprintf(logFile, "%s: ", event->name);
-      	}
-	
+        	if(event->mask & IN_ISDIR || !event->len) continue; //o directory o file vuoto (!0 = 1)
+
+        	//scrivo il nome del file appena creato
+        	if (!fprintf(logFile, "\n%s: ", event->name)){
+        		perror("fprintf");
+        		return;
+        	}
+
+        	//fflush(logFile);
+
+        	//creo la stringa per individuare il file creato
+        	update_string(newFilePath, argv[1]);
+        	//append_string(newFilePath, "/");
+        	append_string(newFilePath, event->name);
+
+        	/*
+   			fileSize = getFileSize(newFilePath->data);
+   			printf("%d", fileSize);
+        	char *fileContentBuf = malloc(fileSize * (sizeof(char)) + 1);
+        	fileContentBuf[fileSize] = '\0';
+        	readWholeFile(newFilePath->data, fileContentBuf);
+
+        	fwrite(fileContentBuf, sizeof(char), fileSize, logFile); //da buffer a stream
+
+        	//libero le risorse e aspetto il prossimo evento
+        	free(fileContentBuf);
+        	*/
+
+        	writeFromFileToFile(newFilePath->data, argv[2]);
+
+      	}	
 
 	}
 

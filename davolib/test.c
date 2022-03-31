@@ -7,5 +7,13 @@
  	split_string(str, ".", tokens);
  	for (int i = 0; i < len; i++){
  		printf("%s\n", *(tokens+i));
- 	}
+    }
+
+    char contenuto[getFileSize("./dddd") +1];
+    init_string_array(contenuto);
+    readWholeFile("./dddd", contenuto);
+    printf("%s\n", contenuto);
+
+    writeFromFileToFile("./mondo.txt", "./ciao.txt");
+
  }
