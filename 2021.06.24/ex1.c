@@ -26,7 +26,7 @@ void main(int argc, char const *argv[])
 	}
 	/* Create the file descriptor for accessing the inotify API */
 	//inotify file handle should not block read operations. 
-	int fd = inotify_init1(IN_NONBLOCK); //creates an inotify instance and returns a file descriptor referring to the inotify instance (everything is a file)
+	int fd = inotify_init1(IN_CLOEXEC); //creates an inotify instance and returns a file descriptor referring to the inotify instance (everything is a file)
 	FILE *logFile = fopen(argv[2], "a");
 	if (logFile == NULL){
 		perror("fopen");
@@ -58,7 +58,7 @@ void main(int argc, char const *argv[])
       	/* Loop over all events in the buffer */
       	for (char *ptr = buf; ptr < buf + len; ptr += sizeof(struct inotify_event) + event->len){
 
-      		event = (const struct inotify_event *) ptr;
+      		event = (struct inotify_event *) ptr;
         	
         	if(event->mask & IN_ISDIR || !event->len) continue; //o directory o file vuoto (!0 = 1)
 
@@ -68,30 +68,30 @@ void main(int argc, char const *argv[])
         		return;
         	}
 
-        	//fflush(logFile);
-
-        	printf("evento catturato");
+        	fflush(logFile); //La funzione fflush() forza la scrittura dei dati bufferizzati sullo stream tramite la funzione di basso livello write() => lo scaric
+        	//senza di esso il programma non funzionava (scriveva solo il contenuto senza il nome e rimaneva bloccato)
         	
-        	//ora dobbiamo leggere il contenuto del file appena creato nella cartella vuota
         	//creo prima la stringa per individuare il file creato
         	update_string(newFilePath, argv[1]);
         	//append_string(newFilePath, "/");
         	append_string(newFilePath, event->name);
 
-        	/*
-   			fileSize = getFileSize(newFilePath->data);
-   			printf("%d", fileSize);
-        	char *fileContentBuf = malloc(fileSize * (sizeof(char)) + 1);
-        	fileContentBuf[fileSize] = '\0';
-        	readWholeFile(newFilePath->data, fileContentBuf);
+        	//check if new created file is whether an executable or not (tramite maschera bit di stat)
+        	//https://stackoverflow.com/questions/13098620/using-stat-to-check-if-a-file-is-executable-in-c
+        	//https://linux.die.net/man/2/stat
+        	//http://manpages.ubuntu.com/manpages/trusty/man2/inotify_init.2.html
+        	appendFileToFile(newFilePath->data, argv[2]);
 
-        	fwrite(fileContentBuf, sizeof(char), fileSize, logFile); //da buffer a stream
+        	//remove: Resource temporarily unavailable => devo unlinkarlo prima
+        	if (unlink(newFilePath->data)){
+        		perror("unlink");
+        		exit(EXIT_FAILURE);
+        	}
+        	if (!remove(newFilePath->data)){
+        		perror("remove");
+        		exit(EXIT_FAILURE);
+        	}
 
-        	//libero le risorse e aspetto il prossimo evento
-        	free(fileContentBuf);
-        	*/
-
-        	writeFromFileToFile(newFilePath->data, argv[2]);
 
       	}
 	

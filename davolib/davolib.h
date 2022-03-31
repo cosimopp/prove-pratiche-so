@@ -16,5 +16,5 @@ void split_string(string_t *s, const char *delim, char** array);
 void update_string(string_t* s, const char *newStr);
 
 void readWholeFile(const char *filePath, char *buf);
-int getFileSize(const char *filePath);
-int writeFromFileToFile(const char *srcPath, const char *dstPath);
+int appendFileToFile(const char *toAppendPath, const char *dstPath);
+int getOutput(const char *filePath, char const *argv[], char *buf, int bufSize);

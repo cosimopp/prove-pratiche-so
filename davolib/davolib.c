@@ -1,49 +1,77 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <sys/wait.h>
 
+enum PIPES {READ, WRITE};
+
+#define init_array(T) ( memset((T), 0, sizeof((T))) )
+
+//we deal with strings! like JS ;)
 typedef struct string {
 	size_t length;
 	char *data;
 } string_t;
-//we deal with strings!
-//0 file 1 dir 2 exec
-int whatTypeIsIt(const char *filePath){}
 
-void getOutput(const char *filePath){}
 
-//con queste funzioni è meglio controllare di volta in volta le varie aperture/interazioni con i file
-int getFileSize(const char *filePath){
+//Salva dentro un buffer il risultato dell'esecuzione di un eseguibile
+/*
+esempio:
+	const char *args[3] = {"/bin/echo", "ciao", NULL};
+    char output[60];
+    init_array(output);
+    getOutput(args[0], args, output, 60);
+    printf("ottenudto: %s\n", output);
+*/
+int getOutput(const char *filePath, char * const* argv, char *buf, int bufSize){ //supposing buffer has allocated itself enough space
+	int pipefd[2]; // Used to store two ends of pipe
+	
+	if (pipe(pipefd) == -1){
+		perror("pipe");
+		return 1;
+	}
 
-	// opening the file in read mode
-    FILE *fp = fopen(filePath, "r");
-  
-    // checking if the file exist or not
-    if (fp == NULL) {
-        return 1;
+	pid_t pid = fork();
+  	if (pid == -1){
+  		/* Failure */
+  		perror("fork");
+  		return 1;
+  	}
+   	else if (pid == 0){
+    	/* Child */
+   		close(pipefd[READ]); // Close reading end of pipe. Figlio scrivo
+
+   		dup2(pipefd[WRITE], STDOUT_FILENO); //redireziono traffico 
+   		dup2(pipefd[WRITE], STDERR_FILENO);
+   		close(pipefd[1]); //non più utilizzato
+
+   		return execv(filePath, argv); //nel primo argomento oltre al nome dev'essere specificata la sua path
+   		//Control never returns to the original program unless there is an exec() error
     }
-  	
-  	//get current position
-	long pos = ftell(fp);
-
-    fseek(fp, 0L, SEEK_END);
-  
-    // calculating the size of the file
-    long size = ftell(fp);
-  
-    //ripristino - fp temporaneo => ridondante
-    fseek(fp, 0L, (int)pos);
-
-    // closing the file
-    fclose(fp);
-
-    return (int)size;
-
+    else {
+    	/* Parent */
+    	close(pipefd[WRITE]); // Close writing end of pipe. Padre legge
+      	wait(NULL); /* Wait for child */
+      	if (read(pipefd[READ], buf, bufSize) == -1){
+      		perror("read");
+      		return 1;
+      	}
+      	/*
+		fgets reads a line -- i.e. it will stop at a newline.
+		fread reads raw data -- it will stop after a specified (or default) number of bytes, independently of any newline that might or might not be present.
+      	*/
+      	/*clean up*/
+      	close(pipefd[READ]);
+      	return 0;
+    }
 }
 
-int writeFromFileToFile(const char *srcPath, const char *dstPath){//append, non sovrascrive
+void appendFileToFile(const char *toAppendPath, const char *dstPath){//append, non sovrascrive
 
-	FILE *src = fopen(srcPath, "r");
+	FILE *src = fopen(toAppendPath, "r");
 	FILE *dst = fopen(dstPath, "a");
 
 	if (src == NULL || dst == NULL){
@@ -51,9 +79,14 @@ int writeFromFileToFile(const char *srcPath, const char *dstPath){//append, non 
 		exit(EXIT_FAILURE);
 	}
 
-	int size = getFileSize(srcPath);
+	//get file size
+	fseek(src, 0L, SEEK_END);
+    // calculating the size of the file
+    int size = (int) ftell(src);
+    //ripristino per leggere tutto il file
+    fseek(src, 0L, SEEK_SET);
+
 	char buf[size + 1]; //buffer temporaneo di appoggio
-  	size_t len;
   	
   	while(fread(buf, sizeof(char), (size_t)size, src)){
 
@@ -61,37 +94,28 @@ int writeFromFileToFile(const char *srcPath, const char *dstPath){//append, non 
 			perror("fwrite");
 			exit(EXIT_FAILURE);
 		}
-    	printf("wrote %ld from %s to %s\n", (size_t)size, srcPath, dstPath);
   	}
+
+  	fflush(dst);
 
   	fclose(src);
   	fclose(dst);
-
-  	return 0;
-
 }
-void writeIntoFile(const char *filePath, char *data){
-
-}
+void writeIntoFile(const char *filePath, char *data){}
 
 void _pause(){//aggiunto prefisso poichè anche unistd ha pause()
 	printf("\nPress any key to continue . . .");
 	getchar();
 }
 
+//fornito un puntatore ad un buffer vuoto mai inizializzato, gli alloca lo spazio necessario per contenere l'intero contenuto di un file, e restituisce la sua dimensione
 int readWholeFile(const char *filePath, char *buf){
-	//http://www.fundza.com/c4serious/fileIO_reading_all/index.html
 	/* declare a file pointer and open an existing file for reading*/
-	FILE *fp = fopen(filePath, "r");
-
+	FILE *fp = fopen(filePath, "r"); //gli fp creati sono istanze separarate le une dalle altre => non c'è bisogno di nessun ripristino della posizione vecchia
 	/* quit if the file does not exist */
 	if(fp == NULL){
     	return 1;
 	}
-
-	//get current position
-	//long pos = ftell(fp); non necessario poichè è un fp temporaneo
-
 	//The new position, measured in bytes, is obtained by adding offset bytes (0 long) to the position specified by whence (from what place or source.)
 	fseek(fp, 0L, SEEK_END);//in order to get size
 	
@@ -99,26 +123,30 @@ int readWholeFile(const char *filePath, char *buf){
 	long size = ftell(fp);
 
 	fseek(fp, 0L, SEEK_SET); //necessario altrimenti non leggeva
-	
+	/*
+	On files that support seeking, the read operation commences at the file offset, and the file offset is incremented by the number of bytes read.
+    If the file offset is at or past the end of file, no bytes are read, and read() returns zero.
+	*/
+
+	//alloco spazio per il buffer
+	buf = malloc(size*sizeof(char) +1);
+	buf[sizeof(buf)-1] = '\0';
+
 	/* copy all the text into the buffer */
 	fread(buf, sizeof(char), (size_t)size, fp); //The function fread() reads size items of data, each sizeof(char) bytes long,
     //from the stream pointed to by stream, storing them at the location given by buf.
-	
-	/* reset the file position indicator to the beginning of the file */
-	//rewind(fp);//fseek(fp, 0L, SEEK_SET);
-	//fseek(fp, 0L, (int)pos);
 
 	fclose(fp);
 
-	return 0;
+	return (int)sizeof(buf); //incluso il byte di parità
 
 }
 
-//https://www.programiz.com/dsa/avl-tree *((int*)void_PTR)
+//https://www.programiz.com/dsa/avl-tree *((int*)void_PTR) //il file letto come pointer di intero viene deferenziato
 //inizializzare array di stringhe => inizializza ogni stringa?
-#define init_array(T) ( memset((T), 0, sizeof((T))) )
 
 //every EDIT on data buffer should be carried out by davolib API in order to have up-to-date length
+//aggiorna il contenuto di una stringa
 void update_string(string_t* s, const char *newStr){
 	size_t len;
 	if (newStr != NULL){
@@ -136,6 +164,7 @@ void update_string(string_t* s, const char *newStr){
 	s->length = len;
 }
 
+//crea un'istanza di stringa. Fai finta che sia Python
 string_t* create_string(const char *str){
 	string_t* s = malloc(sizeof(string_t)); //It returns a POINTER to the reserved space
 	size_t len;
@@ -151,10 +180,6 @@ string_t* create_string(const char *str){
 	s->data[len] = '\0'; //memory returned by malloc isn't initialized to 0. Setting the first byte of new string to zero ensures that it looks like an empty string
 	s->length = len;
 	return s;
-}
-
-void free_string(string_t *s){
-
 }
 
 //a differenza di strncpy, lo user non si deve preoccupare delle dimensioni della stringa dst

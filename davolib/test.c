@@ -9,12 +9,12 @@
  		printf("%s\n", *(tokens+i));
     }
 
-    char contenuto[getFileSize("./dddd") +1];
-    init_string_array(contenuto);
-    readWholeFile("./dddd", contenuto);
-    printf("%s\n", contenuto);
+    //char contenuto[getFileSize("./dddd") +1];
+    //init_array(contenuto);
+    //readWholeFile("./dddd", contenuto);
+    //printf("%s\n", contenuto);
 
-    writeFromFileToFile("./mondo.txt", "./ciao.txt");
+    //appendFileToFile("./mondo.txt", "./ciao.txt");
 
 
     /*
@@ -30,4 +30,10 @@
             free(fileContentBuf);
             */
 
+    const char *vector[3] = {"/bin/echo", "ciao", NULL};
+    char output[60];
+    init_array(output);
+    getOutput(vector[0], vector, output, 60);
+    printf("ottenudto: %s\n", output);
+    printf("sono arrivato qui!\n");
  }

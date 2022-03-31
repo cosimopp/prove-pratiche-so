@@ -36,4 +36,4 @@ per comprendere prefissi e suffissi (printf https://youtu.be/VA22ESilQO0)
     		return strtok_r(str, delim, &save);
 		}
 
-		toDo: "u"
+		toDo: "u, _at"
