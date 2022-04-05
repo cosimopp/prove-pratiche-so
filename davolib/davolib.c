@@ -26,6 +26,9 @@ esempio:
     getOutput(args[0], args, output, 60);
     printf("ottenudto: %s\n", output);
 */
+//può eliminare file e eseguire comandi che non hanno input (clear funziona bene, cd ha un comportamento strano(copia output precedente, come se dovesse caricare una nuova pagina con esso presente))
+//"exec loads an executable file and replaces the current program image with it. As you rightly noted, cd is not an executable file, but rather a shell builtin. So the executable that you want to run is the shell itself"
+//https://stackoverflow.com/questions/9859903/using-the-exec-family-to-run-the-cd-command
 int getOutput(const char *filePath, char * const* argv, char *buf, int bufSize){ //supposing buffer has allocated itself enough space
 	int pipefd[2]; // Used to store two ends of pipe
 	

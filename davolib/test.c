@@ -1,5 +1,8 @@
 #include "davolib.h"
 #include <stdio.h>
+#include <unistd.h>
+#include <limits.h>
+
  void main(){
  	string_t *str = create_string("192.168.0.1");
  	int len = substring_occurrences(str, ".") +1;
@@ -30,10 +33,10 @@
             free(fileContentBuf);
             */
 
-    const char *vector[2] = {"./interi", NULL};
-    char output[60];
+    const char *vector[3] = {"/bin/cat", "/home/matteo/Desktop/test.cpp", NULL};
+    char output[120];
     init_array(output);
-    getOutput(vector[0], vector, output, 60);
+    getOutput(vector[0], vector, output, 120);
     printf("ottenudto: %s\n", output);
     printf("sono arrivato qui!\n");
  }
