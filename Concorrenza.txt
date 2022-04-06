@@ -1,0 +1,393 @@
+Quando ci sono i semafori, qualsiasi risorsa condivisa dev'essere controllata dal semaforo.
+
+Si dice che un sistema di processi multipli presenta una race condition qualora
+il risultato finale dell'esecuzione dipenda dalla temporizzazione con cui vengono
+eseguiti i processi.
+
+La parte di programma che utilizza risorse condivise è la critical section.
+MutEx. safety => che i thread non interferiscano fra di loro nell'accesso a risorse condivise, così da evitare
+				 race condition
+	   liveness => che i meccanismi di sincronizzazione non blocchino l'avanzamento del programma
+
+DeadLock
+
+LiveLock (mutua cortesia)
+
+
+
+
+BusyWaiting (polling su condizione d'accesso + attesa non necessaria => signal)
+			(if one of the programs might need to access the cs much more often than the other.
+			If we need to access to cs  but it's the other programs turn, then we are forced to wait,
+			even if the other program doesn't need the cs until later)
+
+ex di BusyWaiting
+shared turn = P;
+process P {
+
+	while True {
+
+		poco_codice_non_critico;
+		while (turn == Q){ //finchè è il turno di Q
+			;/*do nothing*/ 
+		}
+		*critical section*
+
+		turn = Q;
+		altro_codice_non_critico;
+
+	}
+}
+
+process Q {
+	
+	while True {
+
+		TANTO_CODICE_NON_CRITICO...;
+		while (turn == P) {
+			;
+		}
+		*critical section*
+		turn = P;
+		altro_codice_non_critico;
+	}
+}
+
+Test & Set => TS(x,y):= <y = x; x = 1> //x variabile globale rappresentante una sezione critica
+
+/*
+process P_iesimo {
+	while True{
+		codice_non_critico;
+
+		mutex.In()
+		*critical section*
+		mutex.Out()
+
+		codice_non_critico;
+	}
+}
+*/
+
+global shared globalBusy = 0;
+process P_iesimo {
+	
+	local localCopy;
+	while True {
+
+		//mutex.In()
+		do{
+			TS(globalBusy, localCopy)
+		} while (localCopy == 1);
+
+		*critical section*
+		
+		//mutex.Out()
+		globalBusy = 0;
+	}
+}
+
+
+Semaphore
+
+//Quando ci sono i semafori, qualsiasi risorsa condivisa dev'essere controllata dal suo semaforo. In ogni momento
+//mai una .P bloccante dentro una sezione critica, altrimenti deadlock ("il processo rimane bloccato sul semaforo e non libera la sezione critica per gli altri processi => non si avanzerà")
+class Semaphore {
+	private int value; //il valore del semaforo non può diventare mai negativo: risorse disponibili
+	Queue queue = new FIFOQueue(); //=> no starvation
+
+	Semaphore(int init) {
+		if (init < 0){
+			throw("il numero di risorse iniziali non può essere un numero negativo");
+			exit(EXIT_FAILURE);
+		}
+		val = init;
+	}
+
+	/*Metodi eseguiti atomicamente*/
+
+	void P() { //<while (val <= 0); val-->
+		< //implementate direttamente dal SO
+		if (value > 0){
+			value --;
+		}
+		else {
+			pid_t pid = getInvokingProcessID();
+			queue.add(pid); //anzichè attesa attiva si autoblocca
+			suspend(pid); //con l'operazione suspend(), il SO mette il processo nello stato waiting
+		}
+		>
+	}
+
+	void V() { //<val++>
+		<
+		if (queue.empty()){
+			value++;
+		}
+		else {
+			pid =queue.remove(); //process ID del processo da sbloccare viene selezionato
+			wakeup(pid); //con l'operazione wakeup(), il SO mette il processo nello stato ready
+		}
+		>
+	}
+}
+
+/*molti autori considerano una situazione di errore una situazione di errore un'operazione V su un semaforo binario che abbia già valore 1*/
+class BinarySemaphore {
+	private int value; //può assumere solo i valori 0 e 1
+	/*due code poichè V è bloccante se il valore del semaforo è 1*/
+	Queue queue0 = new Queue();
+	Queue queue1 = new Queue();
+
+	BinarySemaphore(){
+		value = 1;
+	}
+
+	void P(){
+		<
+		pid_t pid = getInvokingProcessID();
+		if (value == 0){
+			queue0.add(pid);
+			suspend(pid);
+		}
+		else if (queue1.size > 0){
+			pid = queue1.remove();
+			wakeup(pid);
+		}
+		else {
+			value--;
+		}
+		>
+	}
+	void V(){
+		<
+		pid_t pid = getInvokingProcessID();
+		if (value == 1){
+			queue1.add(pid);
+			suspend(pid);
+		}
+		else if (queue0.size > 0){
+			pid = queue0.remove();
+			wakeup(pid);
+		}
+		else {
+			value++;
+		}
+		>
+	}
+}
+
+/*Semafori - Implementazione tramite semafori binari*/
+class Semaphore {
+	private int value;
+
+	//un semaforo mutex per garantire mutua esclusione sulle variabili condivise
+	private BinarySemaphore mutex(1);
+
+	//una coda per garantire fairness
+	QueueOfBinSem queue = new FIFOQueue();
+
+	...costruttore...
+
+	void P(){
+		mutex.P();
+		if (value > 0){
+			value--;
+			mutex.V();
+		}
+		else {
+
+			//semaforo bloccato personale creato in allocazione dinamica per ogni processo che partecipa, così da farlo aspettare
+			BinarySemaphore S = new BinarySemaphore(0);
+			queue.add(s);
+			mutex.V();
+			S.P();
+			//in mezzo non c'è codice non critico. Queste procedure servono per consentire o meno l'accesso nella sezione critica
+			free(S);
+		}
+	}
+	void V(){
+		mutex.P();
+		if (queue.isEmpty()){
+			value++;
+		}
+		else {
+			s = queue.remove(); //coda dei processi che stavano aspettando
+			s.V();
+		}
+		mutex.V();
+	}
+}
+
+/*Semafori - Implementazione tramite semafori binari => LIFO CS
+
+Stack stack = new SemaphoreStack(); //coda anzichè pila se FIFO
+Semaphore mutex = new Semaphore(1);
+global bool busy = FALSE; //variabile globale che rappresenta lo stato della risorsa condivisa
+
+void enter_lifo_cs(){
+	mutex.P();
+	if (busy){
+		Sem = new Semaphore(0);
+		stack.push(Sem);
+		mutex.V();
+		Sem.P();
+		free(Sem);
+	}
+	else {
+		busy = TRUE;
+		mutex.V();
+	}
+}
+
+void exit_lifo_cs(){
+	mutex.P();
+
+	if (stack.isEmpty() == FALSE) {
+		Sem = stack.pop(); //passaggio di testimone
+		Sem.V();
+	}
+	else if (stack.isEmpty()){
+		busy = FALSE; //altrimenti rilascio la risorsa
+	}
+	mutex.V();
+}
+
+enter_lifo_cs(); 
+*critical section*
+exit_lifo_cs();
+
+################################################################################
+
+/*ho deciso di provare ad implementare il problema producer-consumer con un solo semaforo poichè mi viene naturale assegnare un solo semaforo per ogni risorsa condivisa. Garantisce la mutua esclusione, ma controlla l'underflow/overflow ?*/
+
+			//globalBusy
+global bool isFree = TRUE; //variabile globale che rappresenta lo stato della risorsa condivisa, ovvero il buffer
+Semaphore mutex = new Semaphore(1); //a differenza del problema dei lettori e scrittori, solo un consumatore o un produttore può entrare nella zona critica. Un solo processo alla volta nella zona critica
+
+shared int buffer = n;
+
+Queue codaConsumatori = new FIFOQueue();
+Queue codaProduttori = new FIFOQueue();
+
+void ENTER(bool isConsumer){
+	mutex.P();
+	if (isFree){
+		/*start to consuming or producing... => risorsa sarà occupata. Così agendo garantiamo mutua esclusione*/
+		if (buffer == n && isConsumer){
+			isFree = FALSE;
+			mutex.V();
+		}
+		else if (buffer == 0 && isConsumer == FALSE){
+			isFree = FALSE;
+			mutex.V();
+		}
+		//solo così evitiamo underflow/overflow (ex due azioni consecutive concluse da parte dei consumer (n-n = 0, 0-n = ERROR))
+		else {
+			//semaforo individuale bloccato creato in allocazione dinamica per ogni processo che partecipa, così da farlo aspettare
+			Sem = new Semaphore(0);
+		
+			if (isConsumer) codaConsumatori.add(Sem); 
+			else codaProduttori.add(Sem); 
+			
+			mutex.V();
+			Sem.P();
+			free(Sem);
+		}
+	}
+	else { //wait
+		//semaforo individuale bloccato creato in allocazione dinamica per ogni processo che partecipa, così da farlo aspettare
+		Sem = new Semaphore(0);
+		
+		if (isConsumer) codaConsumatori.add(Sem); 
+		else codaProduttori.add(Sem); 
+			
+		mutex.V();
+		Sem.P();
+		free(Sem);
+	}
+}
+
+void EXIT(bool isConsumer){
+	mutex.P();
+	
+	/*passaggio testimone*/
+	if (isConsumer){
+		if (codaProduttori.isEmpty() == FALSE) {
+			producer = codaProduttori.remove();
+			producer.V();
+		}
+		else {
+			isFree = TRUE; //altrimenti rilascio la risorsa
+		}
+	}
+	else { //isProducer
+		if (codaConsumatori.isEmpty() == FALSE) {
+			consumer = codaConsumatori.remove();
+			consumer.V();
+		}
+		else {
+			isFree = TRUE; //altrimenti rilascio la risorsa
+		}
+	}
+
+	mutex.V();
+}
+
+//https://www.quora.com/Why-are-two-semaphores-fill-count-and-empty-count-used-for-the-semaphore-implementation-of-the-producer-consumer-problem-Couldnt-we-have-just-used-one
+
+process Producer {
+	while (TRUE) {
+		ENTER(FALSE);
+		buffer += n;
+		EXIT(FALSE);
+	}
+}
+process Consumer {
+	while (TRUE){
+		ENTER(TRUE);
+		buffer -= n;
+		EXIT(TRUE);
+	}
+}
+
+#############################################
+
+/*IMPORTANTE!!!*/
+//un semaforo per ogni condizione che aspetto
+Semaphore empty = new Semaphore(1); //1 => la condizione empty inizialmente è vera (se BinarySemaphore) altrimenti quante unità empty
+Semaphore full  = new Semaphore(0);
+
+process Producer {
+	while (TRUE) {
+		empty.P(); //aspetto che sia vuoto
+		buffer += n;
+		full.V(); //segnalo che si è riempito
+	}
+}
+process Consumer {
+	while (TRUE){
+		full.P(); //aspetto che sia pieno
+		buffer -= n;
+		empty.V(); //segnalo che si è svuotato
+	}
+}
+
+
+Semaphore s = new Semaphore(1);
+
+process P_iesimo {
+	while True {
+		codice_non_critico;
+		/*pattern classico*/
+		s.P();
+		*critical section*
+		s.V();
+
+		codice_non_critico;
+	}
+}
+
+
+
+Starvation
