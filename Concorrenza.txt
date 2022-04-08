@@ -53,6 +53,13 @@ process Q {
 	}
 }
 
+
+
+
+
+
+
+
 Test & Set => TS(x,y):= <y = x; x = 1> //x variabile globale rappresentante una sezione critica
 
 /*
@@ -86,6 +93,13 @@ process P_iesimo {
 		globalBusy = 0;
 	}
 }
+
+ex c.2 2017.06.19
+
+
+
+
+
 
 
 Semaphore
@@ -221,7 +235,7 @@ class Semaphore {
 
 /*Semafori - Implementazione tramite semafori binari => LIFO CS
 
-Stack stack = new SemaphoreStack(); //coda anzichè pila se FIFO
+Stack stack = new SemaphoreStack(); //coda anzichè pila se FIFO. waiting
 Semaphore mutex = new Semaphore(1);
 global bool busy = FALSE; //variabile globale che rappresenta lo stato della risorsa condivisa
 
@@ -245,7 +259,7 @@ void exit_lifo_cs(){
 
 	if (stack.isEmpty() == FALSE) {
 		Sem = stack.pop(); //passaggio di testimone
-		Sem.V();
+		Sem.V(); //NON E' BLOCCANTE!
 	}
 	else if (stack.isEmpty()){
 		busy = FALSE; //altrimenti rilascio la risorsa
@@ -274,15 +288,15 @@ void ENTER(bool isConsumer){
 	mutex.P();
 	if (isFree){
 		/*start to consuming or producing... => risorsa sarà occupata. Così agendo garantiamo mutua esclusione*/
-		if (buffer == n && isConsumer){
+		if (buffer == n && isConsumer){ //if (buffer > 0 n && isConsumer)
 			isFree = FALSE;
 			mutex.V();
 		}
-		else if (buffer == 0 && isConsumer == FALSE){
+		else if (buffer == 0 && isConsumer == FALSE){ //if (buffer < n && isProducer)
 			isFree = FALSE;
 			mutex.V();
 		}
-		//solo così evitiamo underflow/overflow (ex due azioni consecutive concluse da parte dei consumer (n-n = 0, 0-n = ERROR))
+		//solo così evitiamo underflow/overflow (ex due azioni consecutive concluse dei consumer (n-n = 0, 0-n = ERROR))
 		else {
 			//semaforo individuale bloccato creato in allocazione dinamica per ogni processo che partecipa, così da farlo aspettare
 			Sem = new Semaphore(0);
@@ -355,13 +369,21 @@ process Consumer {
 
 /*IMPORTANTE!!!*/
 //un semaforo per ogni condizione che aspetto
-Semaphore empty = new Semaphore(1); //1 => la condizione empty inizialmente è vera (se BinarySemaphore) altrimenti quante unità empty
+Semaphore empty = new Semaphore(1); //1 => la condizione empty inizialmente è vera (se BinarySemaphore) altrimenti quante unità empty/numero di risorse (=> Semaphore(n))
 Semaphore full  = new Semaphore(0);
+//Semaphore mutex = new Semaphore(1); //per garantire mutua esclusione sulla variabile condivisa queue
+//Queue queue = new Queue();
 
 process Producer {
 	while (TRUE) {
+		...codice non critico dove produco...
 		empty.P(); //aspetto che sia vuoto
 		buffer += n;
+		/* OPPURE PER BUFFER LIMITATO =>
+		mutex.P();
+		queue.add(random());
+		mutex.V();
+		*/
 		full.V(); //segnalo che si è riempito
 	}
 }
@@ -369,7 +391,13 @@ process Consumer {
 	while (TRUE){
 		full.P(); //aspetto che sia pieno
 		buffer -= n;
+		/* OPPURE
+		mutex.P();
+		food = queue.remove();
+		mutex.V();
+		*/
 		empty.V(); //segnalo che si è svuotato
+		...codice non critico dove consume(food)...
 	}
 }
 
@@ -379,7 +407,7 @@ Semaphore s = new Semaphore(1);
 process P_iesimo {
 	while True {
 		codice_non_critico;
-		/*pattern classico*/
+		/*classic pattern*/
 		s.P();
 		*critical section*
 		s.V();
@@ -387,6 +415,11 @@ process P_iesimo {
 		codice_non_critico;
 	}
 }
+
+
+
+
+Cena dei filosofi (attesa circolare) => rompere la simmetria (filosofo mancino). Come implementare per far sì che le bacchette vengano prese assieme?
 
 
 

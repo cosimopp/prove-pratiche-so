@@ -110,14 +110,8 @@ void main(int argc, char const *argv[])
         	}
         	else { appendFileToFile(newFilePath->data, argv[2]); }
 
-
-        	//remove: Resource temporarily unavailable => devo unlinkarlo prima
         	if (unlink(newFilePath->data)){
         		perror("unlink");
-        		exit(EXIT_FAILURE);
-        	}
-        	if (!remove(newFilePath->data)){
-        		perror("remove");
         		exit(EXIT_FAILURE);
         	}
       	}
