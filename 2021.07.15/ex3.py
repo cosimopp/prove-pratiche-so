@@ -12,7 +12,7 @@ print(f"dove si trova l'eseguibile: {os.path.abspath(os.path.dirname(sys.argv[0]
 maxEditTime = float('-inf')
 minEditTime = float('inf')
 #per cambiare directory analizzata => cambiare argomento (non sarebbe l'unico) di os.walk
-for walkingDirPath, subDirs ,files in os.walk("."): #for name in files:, for name in subDirs: lista tutti i file/tutte le cartelle con loro path
+for walkingDirPath, subDirs, files in os.walk("."): #for name in files:, for name in subDirs: lista tutti i file/tutte le cartelle con loro path
 	for fileName in files:
 		fullPath = os.path.join(walkingDirPath, fileName) #path completa
 		editTime = os.stat(fullPath).st_mtime

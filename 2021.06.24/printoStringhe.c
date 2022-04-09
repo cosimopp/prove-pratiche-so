@@ -1,5 +1,7 @@
 #include <stdio.h>
 
-void main(){
-	printf("\tMatteo\nManuelli");
+void
+main ()
+{
+  printf ("\tMatteo\nManuelli");
 }

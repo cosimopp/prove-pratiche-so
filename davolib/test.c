@@ -32,11 +32,16 @@
             //libero le risorse e aspetto il prossimo evento
             free(fileContentBuf);
             */
-
+    /*
     const char *vector[3] = {"/bin/cat", "/home/matteo/Desktop/test.cpp", NULL};
     char output[120];
     init_array(output);
     getOutput(vector[0], vector, output, 120);
     printf("ottenudto: %s\n", output);
     printf("sono arrivato qui!\n");
+   */
+    char *contenutoStringato;
+    //https://stackoverflow.com/questions/14992772/modifying-string-literal-passed-in-as-a-function
+    int lunghezza = readWholeFile("./davolib.h", &contenutoStringato);
+    printf("\nsono pesante %d (compreso \'\\0\') e contengo:\n%s\n mia strlen (sarà pesante-1): %d\n", lunghezza, contenutoStringato, strlen(contenutoStringato));
  }

@@ -111,8 +111,12 @@ void _pause(){//aggiunto prefisso poichè anche unistd ha pause()
 	getchar();
 }
 
+//https://stackoverflow.com/questions/14992772/modifying-string-literal-passed-in-as-a-function
+//alla stringa anonima passata come argomento, la facciamo puntare ad una creata dentro alla funzione. Non uso memcpy o strcpy per paura di seg fault (no spazio allocatole)
+//cos' facendo, non perdo spazio della vecchia stringa poichè questa è vuota!
+//VECCHIO e SBAGLIATO SOTTO
 //fornito un puntatore ad un buffer vuoto mai inizializzato, gli alloca lo spazio necessario per contenere l'intero contenuto di un file, e restituisce la sua dimensione
-int readWholeFile(const char *filePath, char *buf){
+int readWholeFile(const char *filePath, char **buf){
 	/* declare a file pointer and open an existing file for reading*/
 	FILE *fp = fopen(filePath, "r"); //gli fp creati sono istanze separarate le une dalle altre => non c'è bisogno di nessun ripristino della posizione vecchia
 	/* quit if the file does not exist */
@@ -131,17 +135,19 @@ int readWholeFile(const char *filePath, char *buf){
     If the file offset is at or past the end of file, no bytes are read, and read() returns zero.
 	*/
 
-	//alloco spazio per il buffer
-	buf = malloc(size*sizeof(char) +1);
-	buf[sizeof(buf)-1] = '\0';
+	//alloco spazio temporaneo per il buffer
+	char *temp = malloc(size*sizeof(char) +1); //non ritornerà lunghezza ma dimensione
+	temp[sizeof(temp)-1] = '\0';
 
 	/* copy all the text into the buffer */
-	fread(buf, sizeof(char), (size_t)size, fp); //The function fread() reads size items of data, each sizeof(char) bytes long,
+	fread(temp, sizeof(char), (size_t)size, fp); //The function fread() reads size items of data, each sizeof(char) bytes long,
     //from the stream pointed to by stream, storing them at the location given by buf.
-
+	//printf("\n%s\n", temp);
 	fclose(fp);
 
-	return (int)sizeof(buf); //incluso il byte di parità
+	*buf = temp;
+
+	return (int)(size + 1); //incluso il byte di parità
 
 }
 
@@ -209,9 +215,9 @@ void insert_substring_at(string_t *s, const char *toInsert, int startPos){}
 void remove_substring(string_t *s, const char *toRemove){}
 
 //returns occurrences number of a single char in a string
-int substring_occurrences(string_t *s, const char * sub){ //l'algoritmo ha costo O(n^2)(sommatoria gaussiana) nel caso pessimo
-	//non eseguo direttamente questo algoritmo per splittare la stringa perchè non so quanti token dovrò inserire nell'array
-	char *str = s->data; //temp per comodità di lettura
+int substring_occurrences(char *str, const char * sub){ //l'algoritmo ha costo O(n^2)(sommatoria gaussiana) nel caso pessimo
+	//non eseguo direttamente questo algoritmo per splittare la stringa perchè non so quanti token dovrò inserire nell'array (qui potrei estrarre ogni substringa, ma non so quanto allocare!)
+	//char *str = s->data; //temp per comodità di lettura
 
 	int i = 0, j = 0, k = 0, flag = 0, count = 0;
 	for(i = 0 ; *(str + i) != '\0' ; i++){
@@ -225,14 +231,15 @@ int substring_occurrences(string_t *s, const char * sub){ //l'algoritmo ha costo
 				flag = 1; //usciamo dal while
 			}
 		}
+
 		j = 0;//ripristino contatore sottostringa
 		if (flag == 0) i = k; //sottostringa non trovata
 		else flag = 0; //cerca nuova sottostringa 
 	}
 	return count;
 }
-//fills given array with string tokens
-void split_string(string_t *s, const char *delim, char** array){
+//fills given array with string tokens. Alla fine viene aggiunto un ulteriore elemento: NULL
+void split_string(char *str, const char *delim, char** array){
 
 	//e.g. 192.168.0.1 => 3 punti => 3+1 token. array 0 based
 	/*Example
@@ -240,19 +247,19 @@ void split_string(string_t *s, const char *delim, char** array){
 	#include <stdio.h>
  	void main(){
  		string_t *str = create_string("192.168.0.1");
- 		int len = substring_occurrences(str, ".") +1;
- 		char *token[len];
- 		split_string(str, ".", token);
+ 		int len = substring_occurrences(str->data, ".") +1;
+ 		char *token[len + 1];//+1 perchè NULL TERMINATED
+ 		split_string(str->data, ".", token);
  		for (int i = 0; i < len; i++){
  			printf("%s\n", *(token+i));
  		}
  	}
 	*/
 
-	char *str = s->data; //temp per comodità di lettura (strtok cambia offset di lettura?)
+	//char *str = s->data; //temp per comodità di lettura (strtok cambia offset di lettura?)
 
 	//per non ricordarsi ogni volta di passare alla funzione anche la lunghezza dell'array da riempire
-	int arrayLen = substring_occurrences(s, delim) +1;
+	int arrayLen = substring_occurrences(str, delim) + 1;
 
 	char *firstToken = strtok(str, delim); //"idiosincrasia" di strtok
 	*(array + 0) = firstToken;
@@ -261,6 +268,8 @@ void split_string(string_t *s, const char *delim, char** array){
 	for(int i = 1 ; i < arrayLen; i++){
 		*(array + i) = strtok(NULL, delim); //strtok può avere più delim!
 	}
+
+	*(array + arrayLen) = NULL;
 
 }
 
