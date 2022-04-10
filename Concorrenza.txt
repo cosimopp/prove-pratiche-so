@@ -163,7 +163,7 @@ class BinarySemaphore {
 		if (value == 0){
 			queue0.add(pid);
 			suspend(pid);
-		}
+		} //allora il valore del semaforo era necessariamente 1
 		else if (queue1.size > 0){
 			pid = queue1.remove();
 			wakeup(pid);
@@ -179,7 +179,7 @@ class BinarySemaphore {
 		if (value == 1){
 			queue1.add(pid);
 			suspend(pid);
-		}
+		} //allora il valore del semaforo era necessariamente 0
 		else if (queue0.size > 0){
 			pid = queue0.remove();
 			wakeup(pid);
