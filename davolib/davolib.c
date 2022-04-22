@@ -5,6 +5,8 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <sys/wait.h>
+#include <dirent.h>
+#include <limits.h> /* PATH_MAX */
 
 enum PIPES {READ, WRITE};
 
@@ -12,10 +14,87 @@ enum PIPES {READ, WRITE};
 
 //we deal with strings! like JS ;)
 typedef struct string {
-	size_t length;
-	char *data;
+	size_t length = 0;
+	char *data = NULL;
 } string_t;
 
+typedef struct node {
+	char *data = NULL;
+	node *prev = NULL;
+	node *next = NULL; //per stack, next =>up
+} node_t;
+
+typedef struct queue {
+	size_t size = 0;
+	node_t *top = NULL;
+	node_t *last = NULL;
+} queue_t;
+
+typedef struct stack {
+	size_t size = 0;
+	node_t *top = NULL;
+} stack_t;
+
+//add element with value equals to str to generic data structure
+void addElem(void *ds, const char *str, const char *mode){
+
+	node_t *n = malloc(sizeof(node_t));
+	size_t len;
+	if (str != NULL){
+		len = strlen(str);
+	} else {
+		len = 0;
+	}
+	n->data = (char *)malloc(len + 1); //Because of NULL terminator
+	if (str != NULL){
+		memcpy(n->data, str, len);
+	}
+	n->data[len] = '\0';
+
+	ds->size += 1;
+	if (ds->size == 1){ //primo elemento che aggiungiamo
+		ds->top = n;
+		if (strcmp(mode, "queue") == 0){
+			ds->last = n;
+		}
+	}
+	else {
+
+		if (strcmp(mode, "stack") == 0){
+			ds->top->next = n;
+			n->prev = ds->top;
+			ds->top = n;
+		}
+		else if (strcmp(mode, "queue") == 0){
+			ds->last->next = n;
+			n->prev = ds->last;
+			ds->last = n;
+		}
+	}
+}
+
+char *removeElem(void *ds, const char *mode){
+	if (strcmp(mode, "stack") == 0){
+
+		int len = strlen(ds->top->data); //abbiamo già garanzia da addElem che sia != NULL e NULL-terminated
+		char *res = (char *)malloc(len + 1);
+		memcpy(res, ds->top->data, len); // NO res = ds->top->data poichè gli diamo il puntatore, ma dopo liberiamo!
+		*(res + len) = '\0';
+		ds->size -= 1;
+
+	}
+	else if (strcmp(mode, "queue") == 0){}
+
+	return res;
+}
+
+/*check -1 error*/
+void cerror(int exp, const char *msg){
+	if (exp == -1){
+		perror(msg);
+		exit(EXIT_FAILURE);
+	}
+}
 
 //Salva dentro un buffer il risultato dell'esecuzione di un eseguibile
 /*
@@ -147,6 +226,7 @@ int readWholeFile(const char *filePath, char **buf){
 
 	*buf = temp;
 
+	free(temp);
 	return (int)(size + 1); //incluso il byte di parità
 
 }
@@ -273,4 +353,95 @@ void split_string(char *str, const char *delim, char** array){
 
 }
 
-//implementare stack, code e dizionari generici
+//get number of elements in dirPath tree(no . and ..)
+int getNumDirElems(const char *dirPath){
+	int count = 0; //numero di elementi
+	DIR *dir = opendir(dirPath);
+	//check errors
+	if (dir == NULL){
+		perror("opendir");
+		exit(EXIT_FAILURE);
+	}
+
+	string_t *path = create_string(dirPath);
+	struct dirent *entity;
+
+	while ((entity = readdir(dir)) != NULL) {
+
+		if(strcmp(entity->d_name, ".") == 0 || strcmp(entity->d_name, "..") == 0) continue;
+
+		//check if file is a directory 
+		if (entity->d_type == DT_DIR){ //https://www.gnu.org/software/libc/manual/html_node/Directory-Entries.html
+
+			append_string(path, "/");
+			append_string(path, entity->d_name);
+			count = count + getNumDirElems(path->data);
+			update_string(path, dirPath);
+		}
+		count++; //cartella comunque contata
+	}
+
+	free(path);
+	closedir(dir);
+	return count;
+}
+
+//list all relative paths in rootDir tree into given array 
+void lsFilesDirTree(const char *rootDir, char **buf, const char *mode){
+	//inizializzando struttura dati che conterrà tutte le path relative delle directory
+	//visita in ampiezza
+	if (strcmp(mode, "bfs") == 0){
+		queue_t *dirs; //già inizializzato di default
+		addElem(dirs, rootDir, "queue"); //elemento iniziale è rootDir
+	}
+	//visita in profondità
+	else if (strcmp(mode, "dfs") == 0){ 
+		stack_t *dirs;
+		addElem(dirs, rootDir, "stack");
+	}
+
+	int i = 0;
+	string_t *path = create_string(rootDir);
+	char dirPath[PATH_MAX]; init_array(dirPath);
+
+	while((dirPath = removeElem(dirs)) != NULL){
+
+		update_string(path, dirPath);
+
+		DIR *dir = opendir(dirPath);
+		//check errors
+		if (dir == NULL){
+			perror("opendir");
+			exit(EXIT_FAILURE);
+		}
+
+		struct dirent *entity;
+
+		while ((entity = readdir(dir)) != NULL) { //traverse each file
+
+			if(strcmp(entity->d_name, ".") == 0 || strcmp(entity->d_name, "..") == 0) continue;
+
+			append_string(path, "/");
+			append_string(path, entity->d_name);
+
+			*(buf + i) = path->data;
+			++i;
+
+			//check if file is a directory 
+			if (entity->d_type == DT_DIR){
+				addElem(dirs, path->data);
+			}
+			
+			update_string(path, dirPath); //ripristino per futuri file letti
+
+		}
+
+		//pulisco array e rilascio risorse
+		free(entity);
+		init_array(dirPath);
+		closedir(dir);
+	}
+
+	free(path);
+	free(dirs);
+}

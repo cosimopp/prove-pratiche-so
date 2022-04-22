@@ -7,6 +7,8 @@ typedef struct string {
 	char *data;
 } string_t;
 
+void cerror(int exp, const char *msg);
+
 #define init_array(T) ( memset((T), 0, sizeof((T))) )
 
 void _pause();
@@ -20,3 +22,5 @@ void update_string(string_t* s, const char *newStr);
 int readWholeFile(const char *filePath, char **buf);
 int appendFileToFile(const char *toAppendPath, const char *dstPath);
 int getOutput(const char *filePath, char const *argv[], char *buf, int bufSize);
+
+int getNumDirElems(const char *dirPath);
