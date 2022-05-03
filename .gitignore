@@ -4,5 +4,5 @@
 !**/*.[h|c|txt]
 !**/*.py
 !**/Makefile
-!./Concorrenza
+!**/Concorrenza/
 #https://git-scm.com/docs/gitignore
