@@ -24,3 +24,4 @@ int appendFileToFile(const char *toAppendPath, const char *dstPath);
 int getOutput(const char *filePath, char const *argv[], char *buf, int bufSize);
 
 int getNumDirElems(const char *dirPath);
+int lsFilesDirTree(const char *rootDir, char **buf, int i);
