@@ -1,0 +1,67 @@
+class PLSem {
+	
+	map[Sem]int dictTimer; //per ogni sem, associato il suo timer
+	map[Sem]int dictPrio; //per ogni sem, associata la sua priorità
+	MaxAVLTree sem4s = new MaxAVLTree(); //ad ogni inserimento o rimozione, in tempo log aggiorna l'albero in base alla priorità/valore del nodo aggiunto
+	int value;
+	Sem mutex = new Sem(1);
+	int timer = 0; //incrementato ad ogni chiamata di PLP() o PLV() 
+
+	PLSem(int init){
+		value = init;
+	}
+
+	PLP(int prio){
+		mutex.P();
+		timer++; //variabili condivise => gestite in mutex
+		for each key in dictTimer\{
+			dictTimer[key] = dictTimer[key]++;
+		}
+		if (value == 0){
+			Sem s = new Sem(0);
+			dictTimer[s] = timer;
+			dictPrio[s] = prio;
+			sem4s.add(s, prio); //ogni nodo nell'albero è una coppia
+			mutes.V();
+			s.P()
+			free(s)
+		}
+		else {
+			value--;
+			mutex.V();
+		}
+	}
+
+	PLV(){
+		mutex.P();
+		timer++;
+		for each key in dictTimer{
+			dictTimer[key] = dictTimer[key]++;
+		}
+		if (!sem4s.isEmpty()){
+			
+			bool samePrio = TRUE;
+			Sem top = sem4s.pop()[0] //restituisce il nodo/sem col massimo valore
+			Sem temp = NULL;
+			Sem toReInsert[];
+			while (samePrio){
+				
+				temp = sem4s.pop() //secondo estratto
+				
+				if dictPrio[temp] == dictPrio[top] {
+					
+					if ((timer - dictTimer[temp]) < (timer - dictTimer[top])) { //più giovane => ha aspettato di meno
+						toReInsert.append(top)
+						top = temp;
+					}
+
+				} else samePrio = FALSE; 
+			}
+			for each sem in toReInsert{
+				sem4s.add(sem);
+			}	
+			top.V()
+		} else if (sem4s.isEmpty()) value++;
+		mutex.V();
+	}
+}
