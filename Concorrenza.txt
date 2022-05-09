@@ -460,6 +460,72 @@ rilascio risorsa non è mai bloccante
 
 Starvation
 
+
+
+
+
+da MP sincrono a MP asincrono (MP asincrono ha più potere espressivo)
+
+asend(msg, dest):
+	ssend(<msg, getpid(), dest>, server)
+
+areceive(mitt): //aspettiamo msg da questo mittente
+	ssend(<NULL, mitt, getpid()>, server)
+	msg = sreceive(server)
+	return msg
+
+server():
+
+	//It could be a boolean matrix instead.
+	int waiting[MITTENTI][DESTINATARI] //il destinatario sta aspettando di ricevere un messaggio dal mittente
+	
+	Queue queue[MITTENTI][DESTINATARI] //il destinatario non ha ancora richiesto di ricevere messaggi dal mittente
+
+	while TRUE:
+				
+		(msg, p, q) = sreceive(ANY);
+		
+		if msg == NULL: //ricevuto dal destinatario q il quale ora è pronto a ricevere un msg dal mittente p 
+			
+			//"c'è già un msg in coda?"
+			if queue[p][q].isEmpty():
+				waiting[p][q]++
+			else:
+				msg = queue[p][q].remove()
+				ssend(msg, q)
+	
+		else: //ricevuto dal sender p
+			
+			if waiting[p][q] == 1:
+				ssend(msg, q)
+				waiting[p][q] = 0
+			else if waiting[p][q] == 0:
+				queue[p][q].add(msg)
+				
+//partial sync send deve essere bloccante
+pssend(msg, dest){
+	okToSend = areceive(dest); //areceive è bloccante; se riceviamo un messaggio da esso => possiamo inviare	
+	asend([getpid(), msg], dest) //il sender ha ricevuto l'ok per inviare: invia immediatamente!
+}
+
+//partial sync receive NON deve essere bloccante
+psreceive(mitt){
+	asend("dummy", mitt) //notifichiamo al mittente che siamo pronti a ricevere con un messaggio dummy
+	//la funzione receive fornita è bloccante, e il mittente dal quale aspettiamo può non essere online.
+	//quindi ci automandiamo un messaggio per sbloccare la receive
+	asend([getpid(), "dummy"], getpid())
+
+	sender, msg = areceive(mitt) //abbiamo la garanzia di aver ricevito almeno un messaggio
+	if sender != getpid(){ //il mittente voleva effettivamente inviarci un messaggio
+		//il SO di per sè gestisce una coda (infinita) dei messaggi per ogni eventuale destinatario: la pulisco dal mio automessaggio //pippa
+		//free(__coda(mitt))
+		return msg
+	}
+	else return None
+
+}
+
+
 ##############################
 SBAGLIATO ma mi sono CORRETTO - readers entrano tutti assieme in sezione critica, e solo l'ultimo chiude la mutua esclusione passata.
 https://www.cs.unibo.it/~renzo/so/materiale2122/concorrenza2122-4p.pdf secondo quadrante cartesiano pg 37/50

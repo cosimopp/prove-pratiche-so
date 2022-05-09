@@ -14,7 +14,7 @@ class PLSem {
 	PLP(int prio){
 		mutex.P();
 		timer++; //variabili condivise => gestite in mutex
-		for each key in dictTimer\{
+		for each key in dictTimer{
 			dictTimer[key] = dictTimer[key]++;
 		}
 		if (value == 0){
