@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <linux/limits.h>
+#include <fcntl.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
@@ -13,7 +14,7 @@ enum PIPES {READ, WRITE};
 
 #define init_array(T) ( memset((T), 0, sizeof((T))) )
 
-//we deal with strings! like JS ;)
+//we deal with strings! like JS ;) MA RICORDA: s->data E' UN PUNTATORE => QUANDO ASSEGNI STRNCPY!
 typedef struct string {
 	size_t length;
 	char *data;
@@ -266,20 +267,21 @@ printf("%s\n", *(token+i));
 }
 */
 
+//SBAGLIATO!: gli passi il puntatore, non copi la memoria!!! v
 //char *str = s->data; //temp per comodità di lettura (strtok cambia offset di lettura?)
 
 //per non ricordarsi ogni volta di passare alla funzione anche la lunghezza dell'array da riempire
-int arrayLen = substring_occurrences(str, delim) + 1;
+	int arrayLen = substring_occurrences(str, delim) + 1;
 
-char *firstToken = strtok(str, delim); //"idiosincrasia" di strtok
-*(array + 0) = firstToken;
+	char *firstToken = strtok(str, delim); //"idiosincrasia" di strtok
+	*(array + 0) = firstToken;
 
 
-for(int i = 1 ; i < arrayLen; i++){
-	*(array + i) = strtok(NULL, delim); //strtok può avere più delim!
-}
+	for(int i = 1 ; i < arrayLen; i++){
+		*(array + i) = strtok(NULL, delim); //strtok può avere più delim!
+	}
 
-*(array + arrayLen) = NULL;
+	*(array + arrayLen) = NULL;
 
 }
 
@@ -320,7 +322,8 @@ int getNumDirElems(const char *dirPath){
 int lsFilesDirTree(const char *rootDir, char **buf, int i){ 
 	DIR* dir = opendir(rootDir);
 	if (dir == NULL) {
-		return -1;
+		perror("opendir");
+		exit(EXIT_FAILURE);
 	}
 
 
@@ -328,11 +331,10 @@ int lsFilesDirTree(const char *rootDir, char **buf, int i){
 	int j = i; //indice per inserire elementi nell'array dal quale partire.
 
 	struct dirent* entity;
-	entity = readdir(dir);
-	while (entity != NULL) {
-
+	while ((entity = readdir(dir)) != NULL) {
 
 		if(strcmp(entity->d_name, ".") == 0 || strcmp(entity->d_name, "..") == 0) continue;
+
 		append_string(path, "/");
 		append_string(path, entity->d_name);
 
@@ -340,14 +342,14 @@ int lsFilesDirTree(const char *rootDir, char **buf, int i){
 			j += lsFilesDirTree(path->data, buf, j);
 		}
 		
-		
 		//inserisco prima i sotto elementi, poi la radice
-		*(buf + j) = path->data;
 
+		*(buf + j) = (char *)malloc(path->length + 1); //Because of NULL terminator
+		init_array(*(buf + j));
+		strncpy(*(buf + j), path->data, path->length);	
 
 		j++; //anche cartelle contate come elementi dell'albero e da analizzare
 		update_string(path, rootDir);
-		entity = readdir(dir); //prossimo entità da analizzare
 	}
 	
 	free(path);
