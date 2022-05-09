@@ -504,6 +504,7 @@ server():
 				
 //partial sync send deve essere bloccante
 pssend(msg, dest){
+	free(__coda(getpid())) //pulisco la coda (gestita dal SO) da eventuali messaggi precedenti non recapitati (guarda asend([getpid(), "dummy"], getpid()))
 	okToSend = areceive(dest); //areceive è bloccante; se riceviamo un messaggio da esso => possiamo inviare	
 	asend([getpid(), msg], dest) //il sender ha ricevuto l'ok per inviare: invia immediatamente!
 }
