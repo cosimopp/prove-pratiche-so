@@ -510,7 +510,7 @@ pssend(msg, dest){
 
 //partial sync receive NON deve essere bloccante
 psreceive(mitt){
-	asend("dummy", mitt) //notifichiamo al mittente che siamo pronti a ricevere con un messaggio dummy
+	asend("dummy", mitt) //notifichiamo al mittente che siamo pronti a ricevere, con un messaggio dummy
 	//la funzione receive fornita è bloccante, e il mittente dal quale aspettiamo può non essere online.
 	//quindi ci automandiamo un messaggio per sbloccare la receive
 	asend([getpid(), "dummy"], getpid())
@@ -518,11 +518,11 @@ psreceive(mitt){
 	sender, msg = areceive(mitt) //abbiamo la garanzia di aver ricevito almeno un messaggio
 	if sender != getpid(){ //il mittente voleva effettivamente inviarci un messaggio
 		//il SO di per sè gestisce una coda (infinita) dei messaggi per ogni eventuale destinatario: la pulisco dal mio automessaggio //pippa
+		//P.S.: abbiamo la garanzia che nella coda ci siano al massimo due elementi poichè la pssend è bloccante 
 		//free(__coda(mitt))
 		return msg
 	}
 	else return None
-
 }
 
 
