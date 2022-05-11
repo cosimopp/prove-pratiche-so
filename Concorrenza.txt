@@ -502,9 +502,21 @@ server():
 			else if waiting[p][q] == 0:
 				queue[p][q].add(msg)
 				
+
+
+
+
+
 //partial sync send deve essere bloccante
 pssend(msg, dest){
-	free(__coda(getpid())) //pulisco la coda (gestita dal SO) da eventuali messaggi precedenti non recapitati (guarda asend([getpid(), "dummy"], getpid()))
+	//il destinatario potrebbe avermi notificato che lui era pronto mentre io non lo ero.
+	//con questo stratagemma pulisco la mia coda dei messaggi
+	//se non facessi questa operazione, il mittente invierebbe un messaggio illudendosi che il destinatario sia ora pronto, quando invece lo era prima
+	asend("puliscoCoda", getpid()) //mi autoinvio un messaggio
+	msg = ""
+	while msg != "puliscoCoda":
+		msg = areceive(getpid())
+
 	okToSend = areceive(dest); //areceive è bloccante; se riceviamo un messaggio da esso => possiamo inviare	
 	asend([getpid(), msg], dest) //il sender ha ricevuto l'ok per inviare: invia immediatamente!
 }
@@ -516,11 +528,13 @@ psreceive(mitt){
 	//quindi ci automandiamo un messaggio per sbloccare la receive
 	asend([getpid(), "dummy"], getpid())
 
-	sender, msg = areceive(mitt) //abbiamo la garanzia di aver ricevito almeno un messaggio
+	sender, msg = areceive(ANY) //abbiamo la garanzia di aver ricevuto almeno un messaggio
 	if sender != getpid(){ //il mittente voleva effettivamente inviarci un messaggio
-		//il SO di per sè gestisce una coda (infinita) dei messaggi per ogni eventuale destinatario: la pulisco dal mio automessaggio //pippa
-		//P.S.: abbiamo la garanzia che nella coda ci siano al massimo due elementi poichè la pssend è bloccante 
-		//free(__coda(mitt))
+		
+		//rimuovo messaggio che mi ero automandato, altrimenti prossima psreceive() lo avrebbe letto, illudendosi che il mittente non sia online
+		areceive(getpid()); //significa "aspetto un messaggio che viene da me stesso", ed abbiamo la garanzia di averlo ricevuto
+
+		//alla fine, ritorno il messaggio
 		return msg
 	}
 	else return None
