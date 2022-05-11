@@ -515,8 +515,9 @@ pssend(msg, dest){
 	asend("puliscoCoda", getpid()) //mi autoinvio un messaggio
 	msg = ""
 	while msg != "puliscoCoda":
-		msg = areceive(getpid())
+		msg = areceive(ANY) //controllo messaggi che arrivano da chiunque
 
+	//sender invia il messaggio solo dopo aver ricevuto l'ok dal destinatario (il quale dice "ora sono online")
 	okToSend = areceive(dest); //areceive è bloccante; se riceviamo un messaggio da esso => possiamo inviare	
 	asend([getpid(), msg], dest) //il sender ha ricevuto l'ok per inviare: invia immediatamente!
 }
