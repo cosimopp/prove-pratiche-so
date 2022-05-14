@@ -27,9 +27,11 @@ int substring_occurrences(char *str, const char * sub);
 void split_string(char *str, const char *delim, char** array);
 void update_string(string_t* s, const char *newStr);
 
-int readWholeFile(const char *filePath, char **buf);
 int appendFileToFile(const char *toAppendPath, const char *dstPath);
+int getFileSize(const char *filePath);
 int getOutput(const char *filePath, char const *argv[], char *buf, int bufSize);
 
+
+int readWholeFile(const char *filePath, char *buf);
 int getNumDirElems(const char *dirPath);
 int lsFilesDirTree(const char *rootDir, char **buf, int i);

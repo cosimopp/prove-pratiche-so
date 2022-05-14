@@ -1,3 +1,4 @@
+
 /*
 Scrivere un programma searchlink che dati due parametri (nell'ordine un file f ed una directory d)
 metta in output l'elenco dei path all'interno dell'albero che ha radice in d che fanno riferimento ad f
@@ -25,6 +26,11 @@ significa che dir/a e dir/d/b si riferisono a f come link fisici mentre dir/e/s 
 #include <sys/stat.h>
 #include <sys/types.h>
 
+void rmf(const char *filePath){
+	unlink(filePath);
+	remove(filePath);
+}
+
 int main(int argc, char const *argv[]){
 
 	int len = getNumDirElems(argv[3]); //numero di file nella directory 
@@ -49,12 +55,11 @@ int main(int argc, char const *argv[]){
 	ino_t inode = buf.st_ino;  
 
 	//creo cache per "-c"
-	char *contenuto;
+	char contenuto[getFileSize(resolvedPath) +1];
+    init_array(contenuto);
+    readWholeFile(resolvedPath, contenuto);
     //https://stackoverflow.com/questions/14992772/modifying-string-literal-passed-in-as-a-function
-    int lunghezza = readWholeFile(resolvedPath, &contenuto);
     /* printf("\nsono pesante %d (compreso \'\\0\') e contengo:\n%s\n mia strlen (sarà pesante-1): %d\n", lunghezza, contenutoStringato, strlen(contenutoStringato)); */
-
-
 
 	for(int i=0; i < len; i++){
 		
@@ -77,7 +82,7 @@ int main(int argc, char const *argv[]){
 			if (linkToFile){
 				
 				//remove link
-				unlink(resolvedFile);
+				rmf(resolvedFile);
 				//create copy
 				int f = open(resolvedFile, O_WRONLY|O_CREAT);
 				write(f, contenuto, sizeof(contenuto));
@@ -85,7 +90,7 @@ int main(int argc, char const *argv[]){
 
 			}
 			else if (linkToSoft){
-				unlink(resolvedFile);
+				rmf(resolvedFile);
 				symlink(resolvedFile, resolvedPath); //crea link simbolico
 			}
 			continue;
@@ -100,7 +105,7 @@ int main(int argc, char const *argv[]){
 			if (linkToFile){
 	
 				//remove link
-				unlink(*(list + i));
+				rmf(*(list + i));
 				//create copy
 				int f = open(*(list + i), O_WRONLY|O_CREAT);
 				write(f, contenuto, sizeof(contenuto));
@@ -108,7 +113,8 @@ int main(int argc, char const *argv[]){
 
 			}
 			else if (linkToHard){
-				unlink(*(list + i));
+				rmf(*(list + i));
+				
 				link(*(list + i), resolvedPath); //crea link simbolico
 			}
 		}

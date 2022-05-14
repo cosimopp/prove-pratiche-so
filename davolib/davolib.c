@@ -82,6 +82,33 @@ int getOutput(const char *filePath, char * const* argv, char *buf, int bufSize){
 	}
 }
 
+int getFileSize(const char *filePath){
+
+	// opening the file in read mode
+    FILE *fp = fopen(filePath, "r");
+  
+    // checking if the file exist or not
+    if (fp == NULL) {
+        return 1;
+    }
+  	
+  	//get current position
+	long pos = ftell(fp);
+
+    fseek(fp, 0L, SEEK_END);
+  
+    // calculating the size of the file
+    long size = ftell(fp);
+  
+    //ripristino - fp temporaneo => ridondante
+    fseek(fp, 0L, (int)pos);
+
+	 // closing the file
+    fclose(fp);
+
+	return (int)size;
+}
+
 void appendFileToFile(const char *toAppendPath, const char *dstPath){//append, non sovrascrive
 
 	FILE *src = fopen(toAppendPath, "r");
@@ -126,7 +153,7 @@ void _pause(){//aggiunto prefisso poichè anche unistd ha pause()
 //cos' facendo, non perdo spazio della vecchia stringa poichè questa è vuota!
 //VECCHIO e SBAGLIATO SOTTO
 //fornito un puntatore ad un buffer vuoto mai inizializzato, gli alloca lo spazio necessario per contenere l'intero contenuto di un file, e restituisce la sua dimensione
-int readWholeFile(const char *filePath, char **buf){
+int readWholeFile(const char *filePath, char *buf){
 	/* declare a file pointer and open an existing file for reading*/
 	FILE *fp = fopen(filePath, "r"); //gli fp creati sono istanze separarate le une dalle altre => non c'è bisogno di nessun ripristino della posizione vecchia
 	/* quit if the file does not exist */
@@ -146,18 +173,18 @@ int readWholeFile(const char *filePath, char **buf){
 	   */
 
 	//alloco spazio temporaneo per il buffer
-	char *temp = malloc(size*sizeof(char) +1); //non ritornerà lunghezza ma dimensione
-	temp[sizeof(temp)-1] = '\0';
+	/* char *temp = malloc(size*sizeof(char) +1); //non ritornerà lunghezza ma dimensione */
+	/* temp[sizeof(temp)-1] = '\0'; */
 
 	/* copy all the text into the buffer */
-	fread(temp, sizeof(char), (size_t)size, fp); //The function fread() reads size items of data, each sizeof(char) bytes long,
+	fread(buf, sizeof(char), (size_t)size, fp); //The function fread() reads size items of data, each sizeof(char) bytes long,
 												 //from the stream pointed to by stream, storing them at the location given by buf.
 												 //printf("\n%s\n", temp);
 	fclose(fp);
 
-	*buf = temp;
+	/* *buf = temp; */
 
-	free(temp);
+	/* free(temp); */
 	return (int)(size + 1); //incluso il byte di parità
 
 }
