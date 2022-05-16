@@ -1,0 +1,257 @@
+
+ *  Il monitor "semaforo con timeout" semtimeout deve fornire tre procedure entry:
+        void V(void)
+        boolean P(unsigned int timeout)
+        void tick(void)
+    Vale l'invariante dei semafori generali. La funzione tick viene richiamata ad ogni millisecondo. 
+    Un processo messo in attesa a causa di una P attende al massimo il numero di millisecondi indicato nel parametro.
+Se un processo viene riattivato per timeout la P ritorna valore vero, altrimenti falso. Le operazioni V devono riattivare i processi in attesa in ordine FIFO.
+Scrivere semtimeout. 
+ */
+
+ premessa: è impossibile soddisfare appieno la richiesta del problema se dobbiamo anche garantire, in ogni istante, l'invariante dei semafori generali, ovvero
+
+			init + V_completed - P_completed >=0
+
+Per esempio supponiamo che venga inizializzato un semaforo semtimeout con valore pari ad 1, e supponiamo che ci siano due processi.
+Il primo processo che svolgerà la P(), qualunque sia il suo argomento di timeout, acquisirà l'accesso in mutua esclusione.
+Supponiamo che anche il secondo processo esegua una P(), con timeout pari a 0. Pertanto, seguendo la traccia del problema, il secondo processo dovrebbe aspettare max 0ms per entrare in sezione critica, ovvero entrare subito. La seconda P() vienè così completata (poichè NON può essere bloccata, NON PUO' ASPETTARE), ma così facendo rompiamo l'invariante, oltre a non garantire coerenza dei dati.
+
+Per questi motivi, AL MASSIMO si può implementare un semaforo dove ci sono due code di semafori in attesa di entrare in sezione critica. Una coda, la "urgent queue" conterrà quei semafori bloccati ai quali è scattato il timeout, e pertanto (sempre in un ordine FIFO) hanno l'urgenza di entrare in cs, senza però garantire che dopo tot ms entrano subito in sezione critica!
+
+class semtimeout:
+	
+	int value //valore sem4
+
+	struct blockedProc:
+		unsigned int time
+		Cond cond
+
+	Queue<blockedProc> blocked
+	Queue<blockedProc> urgentBlocked
+
+	semtimeout(int val):
+		value = val
+	
+	entry bool P(unsigned int timeout):
+		if value == 0:
+			//non ci sono più risorse disponibili => processo rimarrà bloccato su una condizione
+			
+			procBlock = new blockedProc
+			procBlock.time = timeout
+			procBlock.cond = new Cond()
+
+			if timeout == 0: urgentBlocked.add(procBlock)
+			else blocked.add(procBlock)
+
+			procBlock.cond.wait()
+			//tecnica panino: prima aggiungo l'elemento bloccante creato dinamicamente, poi una volta liberato lo elimino
+			urgentBlocked.remove(procBlock)
+
+		else: value--
+
+		return !(procBlock.time)
+
+	entry void V():
+		//passaggio mutua esclusione
+		if !urgentBlocked.isEmpty():
+
+			toAwake = urgentBlocked.remove()
+			toAwake.cond.signal()
+
+		else if !blocked.isEmpty():
+				
+			toAwake = blocked.remove()
+			toAwake.cond.signal()
+
+
+		else: //chiusura mutua esclusione
+			value ++
+
+	entry void tick():
+		
+		for proc in blocked:
+			proc.time--
+			if proc.time == 0:
+				blocked.remove(proc)
+				urgentBlocked.add(proc)
+
+
+class PLSem {
+	
+	map[Sem]int dictTimer; //per ogni sem, associato il suo timer
+	map[Sem]int dictPrio; //per ogni sem, associata la sua priorità
+	MaxAVLTree sem4s = new MaxAVLTree(); //ad ogni inserimento o rimozione, in tempo log aggiorna l'albero in base alla priorità/valore del nodo aggiunto
+	int value;
+	Sem mutex = new Sem(1);
+	int timer = 0; //incrementato ad ogni chiamata di PLP() o PLV() 
+
+	PLSem(int init){
+		value = init;
+	}
+
+	PLP(int prio){
+		mutex.P();
+		timer++; //variabili condivise => gestite in mutex
+		for each key in dictTimer{
+			dictTimer[key] = dictTimer[key]++;
+		}
+		if (value == 0){
+			Sem s = new Sem(0);
+			dictTimer[s] = timer;
+			dictPrio[s] = prio;
+			sem4s.add(s, prio); //ogni nodo nell'albero è una coppia
+			mutes.V();
+			s.P()
+			free(s)
+		}
+		else {
+			value--;
+			mutex.V();
+		}
+	}
+
+	PLV(){
+		mutex.P();
+		timer++;
+		for each key in dictTimer{
+			dictTimer[key] = dictTimer[key]++;
+		}
+		if (!sem4s.isEmpty()){
+
+			//poichè ci possono essere semafori con la stessa priorità...
+			bool samePrio = TRUE;
+			Sem top = sem4s.pop()[0] //restituisce il nodo/sem col massimo valore
+			Sem temp = NULL;
+			Sem toReInsert[];
+			while (samePrio){
+				
+				temp = sem4s.pop() //secondo estratto
+				
+				if dictPrio[temp] == dictPrio[top] {
+					
+					if ((timer - dictTimer[temp]) < (timer - dictTimer[top])) { //più giovane => ha aspettato di meno
+						toReInsert.append(top)
+						top = temp;
+					}
+
+				} else samePrio = FALSE; 
+			}
+			for each sem in toReInsert{
+				sem4s.add(sem);
+			}	
+			top.V()
+		} else if (sem4s.isEmpty()) value++;
+		mutex.V();
+	}
+}
+
+
+
+
+
+
+
+
+//partial sync send deve essere bloccante
+pssend(msg, dest){
+	//il destinatario potrebbe avermi notificato che lui era pronto mentre io non lo ero.
+	//con questo stratagemma pulisco la mia coda dei messaggi
+	//se non facessi questa operazione, il mittente invierebbe un messaggio illudendosi che il destinatario sia ora pronto, quando invece lo era prima
+	asend("puliscoCoda", getpid()) //mi autoinvio un messaggio
+	msg = ""
+	while msg != "puliscoCoda":
+		msg = areceive(ANY) //controllo messaggi che arrivano da chiunque
+
+	//sender invia il messaggio solo dopo aver ricevuto l'ok dal destinatario (il quale dice "ora sono online")
+	okToSend = areceive(dest); //areceive è bloccante; se riceviamo un messaggio da esso => possiamo inviare	
+	asend([getpid(), msg], dest) //il sender ha ricevuto l'ok per inviare: invia immediatamente!
+}
+
+//partial sync receive NON deve essere bloccante
+psreceive(mitt){
+	asend("dummy", mitt) //notifichiamo al mittente che siamo pronti a ricevere, con un messaggio dummy
+	//la funzione receive fornita è bloccante, e il mittente dal quale aspettiamo può non essere online.
+	//quindi ci automandiamo un messaggio per sbloccare la receive
+	asend([getpid(), "dummy"], getpid())
+
+	sender, msg = areceive(ANY) //abbiamo la garanzia di aver ricevuto almeno un messaggio
+	if sender != getpid(){ //il mittente voleva effettivamente inviarci un messaggio
+		
+		//rimuovo messaggio che mi ero automandato, altrimenti prossima psreceive() lo avrebbe letto, illudendosi che il mittente non sia online
+		areceive(getpid()); //significa "aspetto un messaggio che viene da me stesso", ed abbiamo la garanzia di averlo ricevuto
+
+		//alla fine, ritorno il messaggio
+		return msg
+	}
+	else return None
+}
+
+
+
+
+https://www.cs.unibo.it/~renzo/so/compiti/2018.09.19.tot.pdf
+ho interpretato che solo alla postazione BLQ (Bologna) le valigie vengono caricate
+
+monitor dispatch:
+
+	int loadedLuggages //quante valigie sono state caricate alla postazione BLQ. Appena raggiunge il numero MAX,
+	//il carrello può partire
+
+	bool hasBeenDumped //indica se i bagagli per la posizione-destinazione corrente sono stati scaricati
+	//serve per unload()
+	
+	Cond okToProceed //per poter scorrere tra le varie postazioni-destinazioni
+	Cond okToEnter //per poter inserire la valigia nel carrello
+	
+	map [int]int[] dict[AIRPORT_CODES] //dizionario che ha AIRPORT_CODES chiavi,e come valore per ogni chiave ha un array di owners
+
+	dispatch(): //init
+		hasBeenDumped = TRUE //alla postazione BLQ nessun pacco da scaricare
+
+	entry void cartat(int code):
+		//questa funzione indica lo scorrimento del carrello tra le varie destinazioni
+	
+		//una volta che abbiamo completato un giro, dobbiamo "svegliare" quei bagagli sospesi nel giro precedente
+		if code == BLQ: //postazione di carico
+			if loadedLuggages < MAX:
+				okToEnter.signal()
+				if loadedLuggages != MAX: okToProceed.wait() //aspettiamo che arrivino nuovi pacchi, quelli che c'erano prima non bastano
+			//se siamo qui sappiamo che abbiamo finito di caricare. Resetto la variabile per il prossimo giro	
+			loadedLuggages = 0 //il carrello è pronto per partire
+
+
+
+		else if !hasBeenDumped: //per unload()
+			okToProceed.waitI()	
+			//qui abbiamo la certezza che tutti i pacchi per la destinazione corrente (non la prossima che è l'argomento) sono stati scaricati
+			//possiamo proseguire
+			hasBeenDumped = FALSE //reset per prossima destinazione 
+
+
+
+
+	entry void load(int dstcode, owner):
+		if loadedLuggages == MAX:
+			okToEnter.wait() //per il prossimo giro
+
+		dict[dstcode].append(owner)
+		loadedLuggages++
+		//dopo che abbiamo inserito il MAXesimo bagaglio...	
+		if loadedLuggages == MAX:
+			okToProceed.signal()
+		else:
+			okToEnter.signal() //c'è spazio
+
+
+
+
+	//dal testo non è chiaro come gestire il caso dove non ci bagagli per quella destinazione
+	entry int unload(int dstcode):
+		
+		if dict[dstcode].isEmpty():
+			hasBeenDumped = TRUE
+			okToProceed.signal()
+			return None
+		else return dict[dstcode].remove()
+
