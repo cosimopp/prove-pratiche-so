@@ -77,6 +77,11 @@ class semtimeout:
 				urgentBlocked.add(proc)
 
 
+
+
+
+
+https://www.cs.unibo.it/~renzo/so/compiti/2021.06.23.tot.pdf
 class PLSem {
 	
 	map[Sem]int dictTimer; //per ogni sem, associato il suo timer
@@ -151,7 +156,7 @@ class PLSem {
 
 
 
-
+message passing parzialmente asincrono dove send è bloccante e receive no. Fornito mp asincrono
 
 //partial sync send deve essere bloccante
 pssend(msg, dest){
@@ -180,6 +185,7 @@ psreceive(mitt){
 		
 		//rimuovo messaggio che mi ero automandato, altrimenti prossima psreceive() lo avrebbe letto, illudendosi che il mittente non sia online
 		areceive(getpid()); //significa "aspetto un messaggio che viene da me stesso", ed abbiamo la garanzia di averlo ricevuto
+		//gestisce anche caso dove l'ok per scrivermi è stato mandato in brodcast con asend("dummy", ANY), poichè leggo solo quel messaggio che proviene da me!
 
 		//alla fine, ritorno il messaggio
 		return msg
@@ -246,7 +252,7 @@ monitor dispatch:
 
 
 
-	//dal testo non è chiaro come gestire il caso dove non ci bagagli per quella destinazione
+	//dal testo non è chiaro come gestire il caso dove non ci sono (più) bagagli per quella destinazione
 	entry int unload(int dstcode):
 		
 		if dict[dstcode].isEmpty():
