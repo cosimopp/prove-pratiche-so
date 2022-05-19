@@ -158,6 +158,50 @@ class PLSem {
 
 message passing parzialmente asincrono dove send è bloccante e receive no. Fornito mp asincrono
 
+
+pssend(msg, dest){
+	asend(<getpid(), msg>, dest)
+	while True:
+		asend(<getpid(), "">, getpid())
+		mitt, mess = areceive(ANY)
+		//abbiamo ricevuto l'ack di ricezione msg
+		if mitt == dest && mess == ACK: return
+		//non c'è necessità di pulire coda
+}
+
+psreceive(mitt){
+
+	//mi automando messaggio così ho la garanzia di aver ricevuto
+	asend(<getpid(), "">, getpid())
+
+	sender, mess = areceive(ANY)
+	//ho tre possibili casi: leggo il mess che un altro mi aveva inviato, leggo il messaggio che mi ero automandato oppure leggo il messaggio corretto
+	if sender == getpid(): return None
+	if mitt != ANY:
+		if sender != mitt: //era quello di un altro
+			asend (<sender, mess>, getpid()) //lo rimetto in coda
+			return None
+		else:
+			asend(ACK, mitt)
+			return mess
+	else: //mitt == ANY => ho garanzia di aver ricevuto un messaggio da qualcuno
+		asend(ACK, sender)
+		return mess
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
 //partial sync send deve essere bloccante
 pssend(msg, dest){
 	//il destinatario potrebbe avermi notificato che lui era pronto mentre io non lo ero.
