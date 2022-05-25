@@ -191,7 +191,45 @@ psreceive(mitt){
 }
 
 
+mulsend(dest, msg, times){
+	for i=1 to times:	
+		asend(<getpid(), msg>, dest) //mando i-esimo messaggio
+		while True{
+			asend(<getpid(), "">, getpid())
+			mitt, mess = areceive(ANY)
+			//abbiamo ricevuto l'ack di ricezione msg
+			if mitt == dest && mess == ACK:
+				areceive(getpid()) //pulisco coda da messaggi autoinviati
+				break
+		}
+}
 
+mulreceive(sender){
+	
+	static db //per FIFOness. Se lo rimettessimo in coda(e.g. asend (<sender, mess>, getpid()) ) nel mentre potrebbe arrivare un nuovo messaggio
+
+	//mi automando messaggio così ho la garanzia di aver ricevuto
+	asend(<getpid(), "">, getpid())
+
+	sender, mess = areceive(ANY)
+	//ho tre possibili casi: leggo il mess che un altro mi aveva inviato, leggo il messaggio che mi ero automandato oppure leggo il messaggio corretto
+	if sender == getpid(): return None
+	
+	//garanzia di avere almeno due messaggi
+	areceive(getpid()) //pulisco coda da messaggio autoinviato
+	db.add(sender, mess)
+
+	if mitt != 0: //NON vogliamo ricevere in broadcast
+		//era quello di un altro
+		if sender != mitt: return None
+		else:
+			asend(ACK, mitt)
+			return db.get(mitt)
+
+	else: //mitt == ANY => ho garanzia di aver ricevuto un messaggio da qualcuno	
+		asend(ACK, sender)
+		return db.get(sender)
+}
 
 
 
